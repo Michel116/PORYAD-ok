@@ -17,6 +17,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/components/ui/use-toast';
 import type { BoxType } from '@/lib/types';
 import { useTerminals } from '@/context/terminals-context';
+import { useUser } from '@/context/user-context';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, ArrowRight, QrCode, Type, Box, MapPin } from 'lucide-react';
@@ -44,6 +45,7 @@ export function AddTerminalDialog({
 }: AddTerminalDialogProps) {
   const { toast } = useToast();
   const { shelfSections, terminals } = useTerminals();
+  const { user } = useUser();
   const isMobile = useIsMobile();
   
   const [step, setStep] = useState<Step>('boxType');
@@ -368,6 +370,9 @@ export function AddTerminalDialog({
     }
   }, [isOpen]);
 
+  const canAdd = user?.role === 'Administrator' || user?.role === 'Verifier' || user?.role === 'User';
+  if (!canAdd) return null;
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -428,5 +433,3 @@ export function AddTerminalDialog({
     </Dialog>
   );
 }
-
-    

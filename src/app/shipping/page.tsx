@@ -3,6 +3,7 @@
 import { useMemo, useState, useCallback } from "react";
 import type { ShipmentWithDetails, Terminal } from "@/lib/types";
 import { useTerminals } from "@/context/terminals-context";
+import { useUser } from "@/context/user-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShipmentDetailsSheet } from "./components/shipment-details-sheet";
 import ShippingHistoryTable from "./components/shipping-history-table";
@@ -26,6 +27,7 @@ import { ManageContragentsDialog } from "./components/manage-contragents-dialog"
 
 export default function ShippingPage() {
     const { terminals, shipments, updateTerminalVerification, shipTerminal, updateShipmentDate, contragents, addContragent, deleteContragent } = useTerminals();
+    const { user } = useUser();
     const [selectedShipment, setSelectedShipment] = useState<ShipmentWithDetails | null>(null);
     const [isShipDialogOpen, setIsShipDialogOpen] = useState(false);
     const [isManageContragentsOpen, setIsManageContragentsOpen] = useState(false);
@@ -35,6 +37,9 @@ export default function ShippingPage() {
     const [newContragentName, setNewContragentName] = useState('');
 
     const { toast } = useToast();
+
+    const canShip = user?.role === 'Administrator' || user?.role === 'User';
+    const canManageContragents = user?.role === 'Administrator';
 
     const shipmentData: ShipmentWithDetails[] = useMemo(() => {
         return shipments.map(shipment => {
@@ -107,7 +112,7 @@ export default function ShippingPage() {
 
     const columns = useMemo(() => getColumns({
         onView: handleRowClick,
-    }), []);
+    }), [handleRowClick]);
     
     const availableTerminalsForShipment = useMemo(() => {
         return terminals.filter(t => t.status !== 'shipped' && t.status !== 'awaits_verification_after_shipping' && t.status !== 'rented');
@@ -178,15 +183,19 @@ export default function ShippingPage() {
                       </PopoverContent>
                     </Popover>
                     
-                    <Button variant="outline" onClick={() => setIsManageContragentsOpen(true)}>
-                      <Users className="mr-2 h-4 w-4" />
-                      Контрагенты
-                    </Button>
+                    {canManageContragents && (
+                      <Button variant="outline" onClick={() => setIsManageContragentsOpen(true)}>
+                        <Users className="mr-2 h-4 w-4" />
+                        Контрагенты
+                      </Button>
+                    )}
 
+                    {canShip && (
                      <Button onClick={() => setIsShipDialogOpen(true)} className="w-full sm:w-auto">
                         <Truck className="mr-2 h-4 w-4"/>
                         Новая отгрузка
                     </Button>
+                    )}
                 </div>
               </div>
 
@@ -214,22 +223,26 @@ export default function ShippingPage() {
                 onUpdateShipmentDate={handleUpdateShipmentDate}
             />
             
-            <InitiateShipmentDialog
-                isOpen={isShipDialogOpen}
-                onOpenChange={setIsShipDialogOpen}
-                terminals={availableTerminalsForShipment}
-                onShip={handleShipTerminal}
-                contragents={contragents}
-                addContragent={handleAddNewContragent}
-            />
+            {canShip && (
+              <InitiateShipmentDialog
+                  isOpen={isShipDialogOpen}
+                  onOpenChange={setIsShipDialogOpen}
+                  terminals={availableTerminalsForShipment}
+                  onShip={handleShipTerminal}
+                  contragents={contragents}
+                  addContragent={addContragent}
+              />
+            )}
 
-            <ManageContragentsDialog
-              isOpen={isManageContragentsOpen}
-              onOpenChange={setIsManageContragentsOpen}
-              contragents={contragents}
-              onAddContragent={addContragent}
-              onDeleteContragent={deleteContragent}
-            />
+            {canManageContragents && (
+              <ManageContragentsDialog
+                isOpen={isManageContragentsOpen}
+                onOpenChange={setIsManageContragentsOpen}
+                contragents={contragents}
+                onAddContragent={addContragent}
+                onDeleteContragent={deleteContragent}
+              />
+            )}
         </>
     );
 }

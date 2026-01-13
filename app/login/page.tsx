@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PackageCheck, User, Lock, EyeOff } from 'lucide-react';
+import { PackageCheck, User, Lock, EyeOff, Eye, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
-import type { FormEvent } from 'react';
+import { type FormEvent, useState } from 'react';
+import { useUser } from '@/context/user-context';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 function BackgroundCard({ className }: { className?: string }) {
   return (
@@ -25,10 +27,24 @@ function BackgroundCard({ className }: { className?: string }) {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useUser();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    router.push('/dashboard');
+    setError(null);
+    setIsLoading(true);
+    const success = await login(username, password);
+    setIsLoading(false);
+    if (success) {
+      router.push('/dashboard');
+    } else {
+      setError('Неверный логин или пароль. Попробуйте снова.');
+    }
   };
 
   return (
@@ -59,26 +75,44 @@ export default function LoginPage() {
           <CardContent>
             <form onSubmit={handleSubmit}>
                 <div className="space-y-6">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Ошибка входа</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
                 <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <Input
-                    id="login-main"
-                    type="text"
-                    placeholder="Ваш логин"
-                    className="pl-10"
+                      id="login-main"
+                      type="text"
+                      placeholder="Ваш логин"
+                      className="pl-10"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      required
+                      autoComplete="username"
                     />
                 </div>
                 <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <Input
-                    id="password-main"
-                    type="password"
-                    placeholder="Пароль"
-                    className="pl-10 pr-10"
+                      id="password-main"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Пароль"
+                      className="pl-10 pr-10"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      autoComplete="current-password"
                     />
-                    <EyeOff className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground cursor-pointer" />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground cursor-pointer">
+                      {showPassword ? <EyeOff /> : <Eye />}
+                    </button>
                 </div>
-                <Button type="submit" size="lg" className="w-full">
+                <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
+                    {isLoading && <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
                     Войти
                 </Button>
                 </div>

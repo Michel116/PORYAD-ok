@@ -5,6 +5,7 @@ import { useState, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { PlusCircle, List, Check, Clock, ChevronDown } from "lucide-react";
 import { useTerminals } from "@/context/terminals-context";
+import { useUser } from "@/context/user-context";
 import { CreateRequestDialog } from "./components/create-request-dialog";
 import { RequestCard } from "./components/request-card";
 import { RequestDetailsSheet } from "./components/request-details-sheet";
@@ -15,8 +16,11 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 
 export default function RequestsPage() {
   const { terminals, verificationRequests, createVerificationRequest, processVerificationRequest, updateVerificationRequestDetails } = useTerminals();
+  const { user } = useUser();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<VerificationRequest | null>(null);
+
+  const canCreate = user?.role === 'Administrator' || user?.role === 'Verifier';
 
   const availableTerminals = useMemo(() => {
     return terminals.filter(t => t.status === 'not_verified' || t.status === 'expired');
@@ -51,7 +55,6 @@ export default function RequestsPage() {
   
   const handleUpdateDetails = (requestId: string, newId: string, newDate: string) => {
     updateVerificationRequestDetails(requestId, newId, newDate);
-    // Refresh the selected request to show new details
     setSelectedRequest(prev => prev ? { ...prev, id: newId, createdAt: newDate } : null);
   }
 
@@ -60,10 +63,12 @@ export default function RequestsPage() {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <h1 className="text-3xl font-bold tracking-tight">Заявки на поверку</h1>
-          <Button onClick={() => setIsCreateDialogOpen(true)} disabled={availableTerminals.length === 0}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Создать заявку
-          </Button>
+          {canCreate && (
+            <Button onClick={() => setIsCreateDialogOpen(true)} disabled={availableTerminals.length === 0}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Создать заявку
+            </Button>
+          )}
         </div>
         
         <div className="space-y-8">
@@ -137,12 +142,14 @@ export default function RequestsPage() {
 
       </div>
 
-      <CreateRequestDialog
-        isOpen={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
-        terminals={availableTerminals}
-        onCreate={handleCreateRequest}
-      />
+      {canCreate && (
+        <CreateRequestDialog
+          isOpen={isCreateDialogOpen}
+          onOpenChange={setIsCreateDialogOpen}
+          terminals={availableTerminals}
+          onCreate={handleCreateRequest}
+        />
+      )}
       
       <RequestDetailsSheet
         request={selectedRequest}

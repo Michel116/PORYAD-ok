@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -21,6 +22,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { MoveTerminalDialog } from './move-terminal-dialog';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useUser } from '@/context/user-context';
 
 interface TerminalDetailsSheetProps {
   terminal: Terminal | null;
@@ -30,19 +32,21 @@ interface TerminalDetailsSheetProps {
 
 export function TerminalDetailsSheet({ terminal, isOpen, onOpenChange }: TerminalDetailsSheetProps) {
   const { toast } = useToast();
-  const { shipTerminal, rentTerminal, contragents, moveTerminal, shelfSections } = useTerminals();
+  const { user } = useUser();
+  const { shipTerminal, rentTerminal, contragents, moveTerminal, shelfSections, addContragent } = useTerminals();
   const [isShipDialogOpen, setIsShipDialogOpen] = useState(false);
   const [isRentDialogOpen, setIsRentDialogOpen] = useState(false);
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const canShip = user?.role === 'Administrator' || user?.role === 'User';
+  const canMove = user?.role === 'Administrator' || user?.role === 'User';
 
   const isExpired = useMemo(() => terminal?.status === 'expired', [terminal]);
   const canPerformActions = useMemo(() => terminal && terminal.status !== 'shipped' && terminal.status !== 'awaits_verification_after_shipping' && terminal.status !== 'rented', [terminal]);
   
   const canShipOrRent = useMemo(() => {
     if (!canPerformActions || !terminal) return false;
-    // Allow shipping/renting expired terminals (with warning)
-    // Disallow if status is "not_verified" and it's not expired (i.e. brand new)
     if (terminal.status === 'not_verified' && !isExpired) return false;
     return true;
   }, [terminal, isExpired, canPerformActions]);
@@ -243,15 +247,20 @@ export function TerminalDetailsSheet({ terminal, isOpen, onOpenChange }: Termina
                 <>
                     <Separator />
                     <SheetFooter className="pt-4 grid grid-cols-2 gap-2">
-                        <Button className="w-full" variant="outline" onClick={() => setIsMoveDialogOpen(true)}>
-                            <Move className="mr-2 h-4 w-4" />
-                            Переместить
-                        </Button>
-                        <Button className="w-full" onClick={handleShipClick} disabled={!canShipOrRent}>
-                            <Truck className="mr-2 h-4 w-4" />
-                            Отгрузить
-                        </Button>
-                        {isRentalTerminal && (
+                        {canMove && (
+                             <Button className="w-full" variant="outline" onClick={() => setIsMoveDialogOpen(true)}>
+                                <Move className="mr-2 h-4 w-4" />
+                                Переместить
+                            </Button>
+                        )}
+                        {canShip && (
+                             <Button className="w-full" onClick={handleShipClick} disabled={!canShipOrRent}>
+                                <Truck className="mr-2 h-4 w-4" />
+                                Отгрузить
+                            </Button>
+                        )}
+                       
+                        {isRentalTerminal && canShip && (
                         <Button className="w-full col-span-2" variant="secondary" onClick={handleRentClick} disabled={!canShipOrRent}>
                             <ArrowRightLeft className="mr-2 h-4 w-4" />
                             Сдать в аренду
@@ -269,6 +278,7 @@ export function TerminalDetailsSheet({ terminal, isOpen, onOpenChange }: Termina
                 onOpenChange={setIsShipDialogOpen}
                 onShip={handleShipConfirm}
                 contragents={contragents}
+                addContragent={addContragent}
             />
         )}
         {isRentDialogOpen && (
@@ -278,6 +288,7 @@ export function TerminalDetailsSheet({ terminal, isOpen, onOpenChange }: Termina
                 onOpenChange={setIsRentDialogOpen}
                 onShip={handleRentConfirm}
                 contragents={contragents}
+                addContragent={addContragent}
                 dialogType="rent"
             />
         )}

@@ -11,9 +11,11 @@ import { useToast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
 import { Search, ShieldCheck } from 'lucide-react';
 import { VerificationFilters } from './components/verification-filters';
+import { useUser } from '@/context/user-context';
 
 export default function VerificationPage() {
     const { terminals, verifyTerminal } = useTerminals();
+    const { user } = useUser();
     const { toast } = useToast();
     const [selectedTerminal, setSelectedTerminal] = useState<Terminal | null>(null);
     const [sheetTab, setSheetTab] = useState<'details' | 'history'>('details');
@@ -23,7 +25,6 @@ export default function VerificationPage() {
     const [resultTerminals, setResultTerminals] = useState<Map<string, 'idle' | 'searching' | 'success' | 'error'>>(new Map());
 
     const verificationData = useMemo(() => {
-        // Now includes 'verified' terminals on this page
         return terminals.filter(t => 
             t.status === 'pending' || 
             t.status === 'verified' || 
@@ -43,6 +44,11 @@ export default function VerificationPage() {
     }, []);
 
     const handleBotCheck = useCallback(async (terminal: Terminal, attempt = 1) => {
+        if (user?.role !== 'Administrator' && user?.role !== 'Verifier') {
+            toast({ title: 'Доступ запрещен', description: 'У вас нет прав для выполнения этой операции.', variant: 'destructive'});
+            return;
+        };
+
         setResultTerminals(prev => new Map(prev).set(terminal.serialNumber, 'searching'));
         try {
             const response = await fetch('/api/arshin', {
@@ -58,16 +64,10 @@ export default function VerificationPage() {
                     title: 'Данные обновлены',
                     description: 'Поверка успешно проверена в Аршин',
                 });
-                // Reset to idle after 5 seconds
                 setTimeout(() => {
-                    setResultTerminals(prev => {
-                        const newMap = new Map(prev);
-                        newMap.delete(terminal.serialNumber);
-                        return newMap;
-                    });
+                    setResultTerminals(prev => { const newMap = new Map(prev); newMap.delete(terminal.serialNumber); return newMap; });
                 }, 5000);
             } else if (data.error === 'No results found in Arshin' && attempt === 1) {
-                // Retry after 3 seconds
                 setTimeout(() => {
                     handleBotCheck(terminal, 2);
                 }, 3000);
@@ -78,13 +78,8 @@ export default function VerificationPage() {
                     description: data.error || 'Не удалось получить данные из Аршина',
                     variant: 'destructive'
                 });
-                // Reset to idle after 5 seconds
                 setTimeout(() => {
-                    setResultTerminals(prev => {
-                        const newMap = new Map(prev);
-                        newMap.delete(terminal.serialNumber);
-                        return newMap;
-                    });
+                    setResultTerminals(prev => { const newMap = new Map(prev); newMap.delete(terminal.serialNumber); return newMap; });
                 }, 5000);
             }
         } catch (error) {
@@ -94,16 +89,11 @@ export default function VerificationPage() {
                 description: 'Не удалось подключиться к Аршин. Проверьте интернет-соединение.',
                 variant: 'destructive'
             });
-            // Reset to idle after 5 seconds
             setTimeout(() => {
-                setResultTerminals(prev => {
-                    const newMap = new Map(prev);
-                    newMap.delete(terminal.serialNumber);
-                    return newMap;
-                });
+                setResultTerminals(prev => { const newMap = new Map(prev); newMap.delete(terminal.serialNumber); return newMap; });
             }, 5000);
         }
-    }, [verifyTerminal, toast]);
+    }, [verifyTerminal, toast, user]);
 
     const handleSheetOpenChange = (isOpen: boolean) => {
         if (!isOpen) {

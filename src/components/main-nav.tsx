@@ -39,7 +39,7 @@ const NotificationBell = ({ color, tooltipText }: { color: 'red' | 'blue', toolt
 export function MainNav({ className, ...props }: React.HTMLAttributes<HTMLElement>) {
   const pathname = usePathname();
   const { shipments, terminals } = useTerminals();
-  const { notificationSettings } = useUser();
+  const { user, notificationSettings } = useUser();
 
   const notifications = useMemo(() => {
     const shippingShippedWithoutVerification = notificationSettings.shippingUnverified && shipments.some(s => s.statusBeforeShipment === 'not_verified' || s.statusBeforeShipment === 'pending');
@@ -60,31 +60,37 @@ export function MainNav({ className, ...props }: React.HTMLAttributes<HTMLElemen
     };
   }, [shipments, terminals, notificationSettings]);
 
-  const navItems = useMemo(() => [
-    { href: '/dashboard', label: 'Главная', icon: LayoutDashboard },
-    { href: '/shelves', label: 'Стеллажи', icon: Package },
-    { href: '/rental', label: 'Аренда', icon: ArrowRightLeft },
-    { 
-      href: '/verification', 
-      label: 'Проверка', 
-      icon: ShieldCheck,
-      notifications: [
-        { show: notifications.verification.red, color: 'red', tooltip: 'Есть не поверенные' },
-        { show: notifications.verification.blue, color: 'blue', tooltip: 'Ожидают/Просрочены' },
-      ]
-    },
-    { 
-      href: '/shipping', 
-      label: 'Отправка', 
-      icon: Truck, 
-      notifications: [
-        { show: notifications.shipping.red, color: 'red', tooltip: 'Отгружены без поверки' },
-        { show: notifications.shipping.blue, color: 'blue', tooltip: 'Отгружены просроченные' },
-      ]
-    },
-    { href: '/requests', label: 'Заявки', icon: ClipboardList },
-    { href: '/settings', label: 'Настройки', icon: Settings },
-  ], [notifications]);
+  const navItems = useMemo(() => {
+    const allItems = [
+      { href: '/dashboard', label: 'Главная', icon: LayoutDashboard, roles: ['Administrator', 'Verifier', 'User'] },
+      { href: '/shelves', label: 'Стеллажи', icon: Package, roles: ['Administrator', 'Verifier', 'User'] },
+      { href: '/rental', label: 'Аренда', icon: ArrowRightLeft, roles: ['Administrator', 'Verifier', 'User'] },
+      { 
+        href: '/verification', 
+        label: 'Проверка', 
+        icon: ShieldCheck,
+        roles: ['Administrator', 'Verifier'],
+        notifications: [
+          { show: notifications.verification.red, color: 'red', tooltip: 'Есть не поверенные' },
+          { show: notifications.verification.blue, color: 'blue', tooltip: 'Ожидают/Просрочены' },
+        ]
+      },
+      { 
+        href: '/shipping', 
+        label: 'Отправка', 
+        icon: Truck, 
+        roles: ['Administrator', 'Verifier', 'User'],
+        notifications: [
+          { show: notifications.shipping.red, color: 'red', tooltip: 'Отгружены без поверки' },
+          { show: notifications.shipping.blue, color: 'blue', tooltip: 'Отгружены просроченные' },
+        ]
+      },
+      { href: '/requests', label: 'Заявки', icon: ClipboardList, roles: ['Administrator', 'Verifier'] },
+      { href: '/settings', label: 'Настройки', icon: Settings, roles: ['Administrator'] },
+    ];
+    if (!user) return [];
+    return allItems.filter(item => item.roles.includes(user.role));
+  }, [notifications, user]);
 
   return (
     <nav
@@ -97,7 +103,8 @@ export function MainNav({ className, ...props }: React.HTMLAttributes<HTMLElemen
           href={item.href}
           className={cn(
             "flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-            pathname === item.href && "bg-muted text-primary",
+            pathname.startsWith(item.href) && item.href !== '/' && "bg-muted text-primary",
+            pathname === '/' && item.href === '/dashboard' && "bg-muted text-primary",
           )}
         >
           <div className="flex items-center gap-3">

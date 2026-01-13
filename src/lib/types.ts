@@ -1,5 +1,6 @@
 
 
+
 export type TerminalStatus = 'verified' | 'pending' | 'not_verified' | 'shipped' | 'awaits_verification_after_shipping' | 'rented' | 'expired';
 export type BoxType = 'type_A' | 'type_B';
 export type Tier = 'Верхний' | 'Нижний' | 'Аренда';
@@ -54,7 +55,7 @@ export type ShipmentWithDetails = Shipment & {
     verifiedUntil?: string | null;
 }
 
-export type UserRole = 'Administrator' | 'Verifier';
+export type UserRole = 'Administrator' | 'Verifier' | 'User';
 
 export type User = {
   id: string;
@@ -62,6 +63,7 @@ export type User = {
   email: string;
   role: UserRole;
   avatarUrl: string;
+  passwordHash?: string;
 };
 
 export type NotificationSettings = {

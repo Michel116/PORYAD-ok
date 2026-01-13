@@ -9,13 +9,17 @@ import { PackagePlus, Search } from 'lucide-react';
 import type { TerminalStatus, BoxType } from '@/lib/types';
 import { Filters } from './components/filters';
 import { useTerminals } from '@/context/terminals-context';
+import { useUser } from '@/context/user-context';
 import { AddTerminalDialog } from '@/components/shared/add-terminal-dialog';
 
 export default function ShelvesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<TerminalStatus | 'all'>('all');
   const { shelfSections, terminals, addTerminal } = useTerminals();
+  const { user } = useUser();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+
+  const canAdd = user?.role === 'Administrator' || user?.role === 'Verifier' || user?.role === 'User';
 
   const regularTerminals = terminals.filter(t => !t.serialNumber.startsWith('1792'));
 
@@ -44,10 +48,12 @@ export default function ShelvesPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button onClick={() => setIsAddDialogOpen(true)} className="w-full sm:w-auto">
-            <PackagePlus className="mr-2 h-4 w-4"/>
-            Добавить терминал
-          </Button>
+          {canAdd && (
+            <Button onClick={() => setIsAddDialogOpen(true)} className="w-full sm:w-auto">
+              <PackagePlus className="mr-2 h-4 w-4"/>
+              Добавить терминал
+            </Button>
+          )}
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_320px] gap-6">
@@ -63,12 +69,14 @@ export default function ShelvesPage() {
            <Filters onFilterChange={setFilter} />
         </div>
       </div>
-      <AddTerminalDialog 
-        isOpen={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-        onAddTerminal={handleAddTerminal}
-        dialogType="regular"
-      />
+      {canAdd && (
+        <AddTerminalDialog 
+          isOpen={isAddDialogOpen}
+          onOpenChange={setIsAddDialogOpen}
+          onAddTerminal={handleAddTerminal}
+          dialogType="regular"
+        />
+      )}
     </div>
   );
 }
